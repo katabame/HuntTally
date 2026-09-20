@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -18,11 +19,12 @@ public class MainWindow : Window, IDisposable
     // We give this window a hidden ID using ##.
     // The user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public MainWindow(Plugin plugin) : base("HuntTally##")
+    public MainWindow(Plugin plugin) : base("HuntTally##MainWindow")
     {
         this.plugin = plugin;
         Size = new Vector2(320, 400);
         SizeCondition = ImGuiCond.FirstUseEver;
+
         IsOpen = plugin.Configuration.IsMainWindowOpen;
     }
 
@@ -112,12 +114,30 @@ public class MainWindow : Window, IDisposable
                 plugin.Configuration.Save();
             }
 
+            ImGui.SameLine();
+            var sameAreaOnly = plugin.Configuration.SameAreaOnly;
+            if (ImGui.Checkbox("現在地のみ", ref sameAreaOnly))
+            {
+                plugin.Configuration.SameAreaOnly = sameAreaOnly;
+                plugin.Configuration.Save();
+            }
+
             ImGui.Separator();
 
-            var filtered = plugin.Configuration.KillCounts
+            var currentTerritory = Plugin.ClientState.TerritoryType;
+
+            var rows = plugin.Configuration.KillCounts
                 .Where(kv => string.IsNullOrEmpty(filterText)
-                   || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(kv => kv.Value);
+                    || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => new
+                {
+                    MobName = kv.Key,
+                    Count = plugin.Configuration.SameAreaOnly
+                        ? kv.Value.GetValueOrDefault(currentTerritory, 0)
+                        : kv.Value.Values.Sum()
+                })
+                .Where(x => plugin.Configuration.SameAreaOnly || x.Count > 0)
+                .OrderByDescending(x => x.Count);
 
             if (ImGui.BeginTable("kills", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
@@ -125,11 +145,11 @@ public class MainWindow : Window, IDisposable
                 ImGui.TableSetupColumn("撃破数", ImGuiTableColumnFlags.WidthFixed, 60);
                 ImGui.TableHeadersRow();
 
-                foreach (var kv in filtered)
+                foreach (var row in rows)
                 {
                     ImGui.TableNextRow();
-                    ImGui.TableNextColumn(); ImGui.TextUnformatted(kv.Key);
-                    ImGui.TableNextColumn(); ImGui.TextUnformatted(kv.Value.ToString());
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(row.MobName);
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(row.Count.ToString());
                 }
 
                 ImGui.EndTable();

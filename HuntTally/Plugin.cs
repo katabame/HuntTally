@@ -7,6 +7,7 @@ using HuntTally.Windows;
 using System.Text.RegularExpressions;
 using Dalamud.Game.Text;
 using Dalamud.Game.Chat;
+using System.Linq;
 
 namespace HuntTally;
 
@@ -84,10 +85,20 @@ public sealed class Plugin : IDalamudPlugin
         var mobName = match.Groups["mobName"].Value.Trim();
         if (string.IsNullOrEmpty(mobName)) return;
 
-        Configuration.KillCounts.TryGetValue(mobName, out var count);
-        Configuration.KillCounts[mobName] = count + 1;
+        if (!Configuration.KillCounts.TryGetValue(mobName, out var territories))
+        {
+            territories = [];
+            Configuration.KillCounts[mobName] = territories;
+        }
+
+        var territoryId = ClientState.TerritoryType;
+        territories.TryGetValue(territoryId, out var count);
+        territories[territoryId] = count + 1;
+
         Configuration.Save();
 
-        Log.Debug($"Kill counted: {mobName} (total: {Configuration.KillCounts[mobName]})");
+        var total = territories.Values.Sum();
+
+        Log.Debug($"Kill counted: {mobName} in territory {territoryId} (this area: {territories[territoryId]}, total: {total})");
     }
 }
