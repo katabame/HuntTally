@@ -85,10 +85,10 @@ public class MainWindow : Window, IDisposable
 
             // If you want to see the Macro representation of this SeString use `.ToMacroString()`
             // More info about SeStrings: https://dalamud.dev/plugin-development/sestring/
-            ImGui.Text(playerState.ClassJob.Value.Abbreviation.ToString());
+            ImGui.Text(playerState.ClassJob.Value.Name.ToString());
 
             ImGui.SameLine();
-            ImGui.Text($" [Level {playerState.Level}]");
+            ImGui.Text($"[レベル {playerState.Level}]");
 
             // Example for querying Lumina, getting the name of our current area.
             var territoryId = Plugin.ClientState.TerritoryType;
@@ -106,37 +106,46 @@ public class MainWindow : Window, IDisposable
             ImGui.SetNextItemWidth(180);
             ImGui.InputTextWithHint("##filter", "モブ名で絞り込み", ref filterText, 64);
 
-            ImGui.SameLine();
 
-            if (ImGui.Button("リセット"))
-            {
-                plugin.Configuration.KillCounts.Clear();
-                plugin.Configuration.Save();
-            }
-
-            ImGui.SameLine();
+            var currentTerritory = Plugin.ClientState.TerritoryType;
             var sameAreaOnly = plugin.Configuration.SameAreaOnly;
+
+            var visibleMobNames = plugin.Configuration.KillCounts
+                .Where(kv => string.IsNullOrEmpty(filterText) || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                .Where(kv => !sameAreaOnly || kv.Value.GetValueOrDefault(currentTerritory, 0) > 0)
+                .Select(kv => kv.Key)
+                .ToList();
+
+            ImGui.SameLine();
+
             if (ImGui.Checkbox("現在地のみ", ref sameAreaOnly))
             {
                 plugin.Configuration.SameAreaOnly = sameAreaOnly;
                 plugin.Configuration.Save();
             }
 
+            //ImGui.SameLine();
+
+            if (ImGui.Button("表示中の全てのモブをリセット"))
+            {
+                foreach (var mobName in visibleMobNames)
+                {
+                    ResetMobKills(mobName, sameAreaOnly, currentTerritory);
+                }
+
+                plugin.Configuration.Save();
+            }
+
             ImGui.Separator();
 
-            var currentTerritory = Plugin.ClientState.TerritoryType;
-
-            var rows = plugin.Configuration.KillCounts
-                .Where(kv => string.IsNullOrEmpty(filterText)
-                    || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .Select(kv => new
+            var rows = visibleMobNames
+                .Select(name => new
                 {
-                    MobName = kv.Key,
-                    Count = plugin.Configuration.SameAreaOnly
-                        ? kv.Value.GetValueOrDefault(currentTerritory, 0)
-                        : kv.Value.Values.Sum()
+                    MobName = name,
+                    Count = sameAreaOnly
+                        ? plugin.Configuration.KillCounts.GetValueOrDefault(name)?.GetValueOrDefault(currentTerritory, 0) ?? 0
+                        : plugin.Configuration.KillCounts.GetValueOrDefault(name)?.Values.Sum() ?? 0,
                 })
-                .Where(x => plugin.Configuration.SameAreaOnly || x.Count > 0)
                 .OrderByDescending(x => x.Count);
 
             if (ImGui.BeginTable("kills", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
@@ -148,12 +157,59 @@ public class MainWindow : Window, IDisposable
                 foreach (var row in rows)
                 {
                     ImGui.TableNextRow();
-                    ImGui.TableNextColumn(); ImGui.TextUnformatted(row.MobName);
-                    ImGui.TableNextColumn(); ImGui.TextUnformatted(row.Count.ToString());
+                    ImGui.TableNextColumn();
+                    ImGui.TextUnformatted(row.MobName);
+
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.BeginTooltip();
+                        if (plugin.Configuration.KillCounts.TryGetValue(row.MobName, out var areaCounts))
+                        {
+                            foreach (var kv in areaCounts.OrderByDescending(x => x.Value))
+                            {
+                                ImGui.TextUnformatted($"{plugin.GetTerritoryName(kv.Key)}: {kv.Value}");
+                            }
+                        }
+                        ImGui.EndTooltip();
+                    }
+
+                    if (ImGui.BeginPopupContextItem($"ctx_{row.MobName}"))
+                    {
+                        var label = sameAreaOnly ? $"「{row.MobName}」の現在地での討伐数をリセット" : $"「{row.MobName}」の全ての討伐数をリセット";
+                        if (ImGui.MenuItem(label))
+                        {
+                            ResetMobKills(row.MobName, sameAreaOnly, currentTerritory);
+                            plugin.Configuration.Save();
+                        }
+                        ImGui.EndPopup();
+                    }
+
+                    ImGui.TableNextColumn();
+                    ImGui.TextUnformatted(row.Count.ToString());
                 }
 
                 ImGui.EndTable();
             }
         }
     }
+
+    private void ResetMobKills(string mobName, bool sameAreaOnly, uint currentTerritory)
+    {
+        if (sameAreaOnly)
+        {
+            if (plugin.Configuration.KillCounts.TryGetValue(mobName, out var territories))
+            {
+                territories.Remove(currentTerritory);
+                if (territories.Count == 0)
+                {
+                    plugin.Configuration.KillCounts.Remove(mobName);
+                }
+            }
+        }
+        else
+        {
+            plugin.Configuration.KillCounts.Remove(mobName);
+        }
+    }
+
 }

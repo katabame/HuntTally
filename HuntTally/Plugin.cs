@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using Dalamud.Game.Text;
 using Dalamud.Game.Chat;
 using System.Linq;
+using Lumina.Excel.Sheets;
 
 namespace HuntTally;
 
@@ -100,5 +101,12 @@ public sealed class Plugin : IDalamudPlugin
         var total = territories.Values.Sum();
 
         Log.Debug($"Kill counted: {mobName} in territory {territoryId} (this area: {territories[territoryId]}, total: {total})");
+    }
+
+    public string GetTerritoryName(uint territoryId)
+    {
+        var sheet = DataManager.GetExcelSheet<TerritoryType>();
+        var placeName = sheet?.GetRow(territoryId).PlaceName.Value.Name.ToString();
+        return string.IsNullOrEmpty(placeName) ? $"不明な場所 ({territoryId})" : placeName;
     }
 }
