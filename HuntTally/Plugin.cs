@@ -44,7 +44,7 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         // Tell the UI system that we want our windows to be drawn through the window system
-        PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += DrawUi;
 
         // Adds another button doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
@@ -55,6 +55,12 @@ public sealed class Plugin : IDalamudPlugin
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [SamplePlugin] ===A cool log message from Sample Plugin===
         Log.Information($"{PluginInterface.Manifest.Name} loaded.");
+    }
+
+    private void DrawUi()
+    {
+        if (!ClientState.IsLoggedIn) return;
+        WindowSystem.Draw();
     }
 
     public void Dispose()
@@ -103,7 +109,7 @@ public sealed class Plugin : IDalamudPlugin
         Log.Debug($"Kill counted: {mobName} in territory {territoryId} (this area: {territories[territoryId]}, total: {total})");
     }
 
-    public string GetTerritoryName(uint territoryId)
+    public static string GetTerritoryName(uint territoryId)
     {
         var sheet = DataManager.GetExcelSheet<TerritoryType>();
         var placeName = sheet?.GetRow(territoryId).PlaceName.Value.Name.ToString();

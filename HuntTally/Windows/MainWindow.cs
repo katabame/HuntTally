@@ -15,11 +15,12 @@ public class MainWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
     private string filterText = string.Empty;
+    private List<(string MobName, int Count)> visibleRows = [];
 
     // We give this window a hidden ID using ##.
     // The user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public MainWindow(Plugin plugin) : base("HuntTally##MainWindow")
+    public MainWindow(Plugin plugin) : base("HuntTally###MainWindow")
     {
         this.plugin = plugin;
         Size = new Vector2(320, 400);
@@ -42,6 +43,51 @@ public class MainWindow : Window, IDisposable
         plugin.Configuration.IsMainWindowOpen = false;
         plugin.Configuration.Save();
         base.OnClose();
+    }
+
+    private List<(string MobName, int Count)> ComputeVisibleRows()
+    {
+        var currentTerritory = Plugin.ClientState.TerritoryType;
+        var sameAreaOnly = plugin.Configuration.SameAreaOnly;
+
+        return [.. plugin.Configuration.KillCounts
+            .Where(kv => string.IsNullOrEmpty(filterText) || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+            .Select(kv => (
+              MobName: kv.Key,
+                Count: sameAreaOnly
+                    ? kv.Value.GetValueOrDefault(currentTerritory, 0)
+                    : kv.Value.Values.Sum()
+            ))
+            .Where(x => !sameAreaOnly || x.Count > 0)
+            .OrderByDescending(x => x.Count)];
+    }
+    private void ResetMobKills(string mobName, bool sameAreaOnly, uint currentTerritory)
+    {
+        if (sameAreaOnly)
+        {
+            if (plugin.Configuration.KillCounts.TryGetValue(mobName, out var territories))
+            {
+                territories.Remove(currentTerritory);
+                if (territories.Count == 0)
+                {
+                    plugin.Configuration.KillCounts.Remove(mobName);
+                }
+            }
+        }
+        else
+        {
+            plugin.Configuration.KillCounts.Remove(mobName);
+        }
+    }
+
+    public override void PreDraw()
+    {
+        visibleRows = ComputeVisibleRows();
+
+        var entryCount = visibleRows.Count;
+        var totalCount = visibleRows.Sum(x => x.Count);
+        WindowName = $"HuntTally ({entryCount}件 / 合計{totalCount}体)###MainWindow";
+        //base.PreDraw();
     }
 
     public override void Draw()
@@ -110,12 +156,6 @@ public class MainWindow : Window, IDisposable
             var currentTerritory = Plugin.ClientState.TerritoryType;
             var sameAreaOnly = plugin.Configuration.SameAreaOnly;
 
-            var visibleMobNames = plugin.Configuration.KillCounts
-                .Where(kv => string.IsNullOrEmpty(filterText) || kv.Key.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .Where(kv => !sameAreaOnly || kv.Value.GetValueOrDefault(currentTerritory, 0) > 0)
-                .Select(kv => kv.Key)
-                .ToList();
-
             ImGui.SameLine();
 
             if (ImGui.Checkbox("現在地のみ", ref sameAreaOnly))
@@ -124,11 +164,9 @@ public class MainWindow : Window, IDisposable
                 plugin.Configuration.Save();
             }
 
-            //ImGui.SameLine();
-
             if (ImGui.Button("表示中の全てのモブをリセット"))
             {
-                foreach (var mobName in visibleMobNames)
+                foreach (var (mobName, _) in visibleRows)
                 {
                     ResetMobKills(mobName, sameAreaOnly, currentTerritory);
                 }
@@ -138,23 +176,13 @@ public class MainWindow : Window, IDisposable
 
             ImGui.Separator();
 
-            var rows = visibleMobNames
-                .Select(name => new
-                {
-                    MobName = name,
-                    Count = sameAreaOnly
-                        ? plugin.Configuration.KillCounts.GetValueOrDefault(name)?.GetValueOrDefault(currentTerritory, 0) ?? 0
-                        : plugin.Configuration.KillCounts.GetValueOrDefault(name)?.Values.Sum() ?? 0,
-                })
-                .OrderByDescending(x => x.Count);
-
             if (ImGui.BeginTable("kills", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
                 ImGui.TableSetupColumn("モブ名");
                 ImGui.TableSetupColumn("撃破数", ImGuiTableColumnFlags.WidthFixed, 60);
                 ImGui.TableHeadersRow();
 
-                foreach (var row in rows)
+                foreach (var row in visibleRows)
                 {
                     ImGui.TableNextRow();
                     ImGui.TableNextColumn();
@@ -167,7 +195,7 @@ public class MainWindow : Window, IDisposable
                         {
                             foreach (var kv in areaCounts.OrderByDescending(x => x.Value))
                             {
-                                ImGui.TextUnformatted($"{plugin.GetTerritoryName(kv.Key)}: {kv.Value}");
+                                ImGui.TextUnformatted($"{Plugin.GetTerritoryName(kv.Key)}: {kv.Value}");
                             }
                         }
                         ImGui.EndTooltip();
@@ -192,24 +220,4 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
-
-    private void ResetMobKills(string mobName, bool sameAreaOnly, uint currentTerritory)
-    {
-        if (sameAreaOnly)
-        {
-            if (plugin.Configuration.KillCounts.TryGetValue(mobName, out var territories))
-            {
-                territories.Remove(currentTerritory);
-                if (territories.Count == 0)
-                {
-                    plugin.Configuration.KillCounts.Remove(mobName);
-                }
-            }
-        }
-        else
-        {
-            plugin.Configuration.KillCounts.Remove(mobName);
-        }
-    }
-
 }
