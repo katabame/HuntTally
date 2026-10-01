@@ -9,7 +9,11 @@
     * ウィンドウの表示状態を記録し自動復元
 * モブ討伐数を自動記録
 * モブ名でフィルター可能
-<img width="389" height="340" alt="image" src="https://github.com/user-attachments/assets/0030513a-c4ab-43fd-a6df-cee4ee9f8f9e" />
+* 現在地のみでフィルター可能
+* モブ名にカーソルをホバーすることで内訳を表示
+* モブ名を右クリックで個別に削除可能
+* ウィンドウタイトルに表示中のエントリ数と合計討伐数を表示
+<img width="331" height="410" alt="image" src="https://github.com/user-attachments/assets/fe86e8e6-b979-4c6a-8569-f050e511c886" />
 
 ## インストール方法
-`Release`からバイナリを入手し、Dalamudのデベロッパーモードでロードしてください
+[katabame/Popoto](https://github.com/katabame/Popoto)を参照して下さい
