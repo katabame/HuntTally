@@ -20,7 +20,7 @@ public class MainWindow : Window, IDisposable
     // We give this window a hidden ID using ##.
     // The user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public MainWindow(Plugin plugin) : base("HuntTally###MainWindow")
+    public MainWindow(Plugin plugin) : base("HuntTally###HuntTally_MainWindow")
     {
         this.plugin = plugin;
         Size = new Vector2(320, 400);
@@ -86,7 +86,7 @@ public class MainWindow : Window, IDisposable
 
         var entryCount = visibleRows.Count;
         var totalCount = visibleRows.Sum(x => x.Count);
-        WindowName = $"HuntTally ({entryCount}件 / 合計{totalCount}体)###MainWindow";
+        WindowName = $"HuntTally ({entryCount}件 / 合計{totalCount}体)###HuntTally_MainWindow";
         //base.PreDraw();
     }
 
