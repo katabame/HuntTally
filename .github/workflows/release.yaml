@@ -16,7 +16,7 @@ jobs:
             PLUGIN_NAME: ${{ github.event.repository.name }}
         steps:
             - name: Checkout Code
-            - uses: actions/checkout@v7
+              uses: actions/checkout@v7
 
             - name: Setup .NET
               uses: actions/setup-dotnet@v6
