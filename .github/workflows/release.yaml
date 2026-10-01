@@ -30,4 +30,12 @@ jobs:
 
             - name: Create Package
               run: |
-                ls -la
+                mkdir ./artifacts
+                cp ./HuntTally/bin/x64/Release/HuntTally/latest.zip ./artifacts/install.zip
+                cp ./HuntTally/bin/x64/Release/HuntTally/latest.zip ./artifacts/update.zip
+                cp ./HuntTally/bin/x64/Release/HuntTally/HuntTally.json ./artifacts/HuntTally.json
+
+            - name: Upload Artifacts
+              uses: softprops/action-gh-release@v3
+              with: |
+                files: ./artifacts/*
