@@ -37,5 +37,8 @@ jobs:
 
             - name: Upload Artifacts
               uses: softprops/action-gh-release@v3
-              with: |
-                files: ./artifacts/*
+              with:
+                files: |
+                    ./artifacts/install.zip
+                    ./artifacts/update.zip
+                    ./artifacts/HuntTally.json
