@@ -87,7 +87,7 @@ public class MainWindow : Window, IDisposable
         var entryCount = visibleRows.Count;
         var totalCount = visibleRows.Sum(x => x.Count);
         WindowName = $"HuntTally ({entryCount}件 / 合計{totalCount}体)###HuntTally_MainWindow";
-        //base.PreDraw();
+        base.PreDraw();
     }
 
     public override void Draw()
