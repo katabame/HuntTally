@@ -1,4 +1,7 @@
 # HuntTally
+![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/katabame/HuntTally/install.zip?displayAssetName=false&style=for-the-badge&label=Installs)
+![GitHub Release](https://img.shields.io/github/v/release/katabame/HuntTally?style=for-the-badge&label=Version)
+
 モブ討伐数記録プラグイン
 
 ## プラグイン概要
